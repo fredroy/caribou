@@ -23,6 +23,8 @@ template<typename Element>
 void CaribouForcefield<Element>::init() {
     using sofa::core::topology::BaseMeshTopology;
     using sofa::core::objectmodel::BaseContext;
+    using CaribouTopology = SofaCaribou::topology::CaribouTopology<Element>;
+
     Inherit1::init();
 
     auto *context = this->getContext();
@@ -37,12 +39,12 @@ void CaribouForcefield<Element>::init() {
     // If not topology is specified, try to find one automatically in the current context
     if (not d_topology_container.get()) {
         // No topology specified. Try to find one suitable.
-        auto caribou_containers = context->template getObjects<SofaCaribou::topology::CaribouTopology<Element>>(
+        auto caribou_containers = context->template getObjects<CaribouTopology>(
                 BaseContext::Local);
         auto sofa_containers = context->template getObjects<BaseMeshTopology>(BaseContext::Local);
         std::vector<BaseMeshTopology *> sofa_compatible_containers;
         for (auto container : sofa_containers) {
-            if (mesh_is_compatible(container)) {
+            if (CaribouTopology::mesh_is_compatible(container)) {
                 sofa_compatible_containers.push_back(container);
             }
         }
@@ -75,11 +77,11 @@ void CaribouForcefield<Element>::init() {
     // Create a caribou internal Domain over the topology
     if (d_topology_container.get()) {
         auto sofa_topology = dynamic_cast<BaseMeshTopology *>(d_topology_container.get());
-        auto caribou_topology = dynamic_cast<SofaCaribou::topology::CaribouTopology<Element> *>(d_topology_container.get());
+        auto caribou_topology = dynamic_cast<CaribouTopology *>(d_topology_container.get());
         if (sofa_topology) {
             // Initialize a new caribou topology from the SOFA topology
-            p_topology = sofa::core::objectmodel::New<SofaCaribou::topology::CaribouTopology<Element>>();
-            p_topology->findData("indices")->setParent(this->get_indices_from(sofa_topology));
+            p_topology = sofa::core::objectmodel::New<CaribouTopology>();
+            p_topology->findData("indices")->setParent(CaribouTopology::get_indices_data_from(sofa_topology));
 #if (defined(SOFA_VERSION) && SOFA_VERSION < 201299)
             using CaribouTopologyMechanicalLink = typename SofaCaribou::topology::CaribouTopology<Element>::template Link<sofa::core::State<DataTypes>>;
             auto state_link = dynamic_cast<CaribouTopologyMechanicalLink*>(p_topology->findLink("state"));
@@ -124,16 +126,12 @@ void CaribouForcefield<Element>::computeBBox(const sofa::core::ExecParams *, boo
 }
 
 template<typename Element>
-auto CaribouForcefield<Element>::get_indices_from(const sofa::core::topology::BaseMeshTopology * /*topology*/) -> sofa::core::objectmodel::BaseData * {
-    throw std::runtime_error("The CaribouForcefield<Element>::get_indices_from() method must be template-specialized for the element type '" + getTemplateName() + "'.");
-}
-
-template<typename Element>
 template<typename Derived>
 auto CaribouForcefield<Element>::canCreate(Derived *o,
                                            sofa::core::objectmodel::BaseContext *context,
                                            sofa::core::objectmodel::BaseObjectDescription *arg) -> bool {
     using namespace sofa::core::objectmodel;
+    using CaribouTopology = SofaCaribou::topology::CaribouTopology<Element>;
 
     std::string requested_element_type = arg->getAttribute( "template", "");
     std::string this_element_type = Derived::templateName(o);
@@ -157,9 +155,9 @@ auto CaribouForcefield<Element>::canCreate(Derived *o,
         topology_path = topology_path.substr(1); // removes the "@"
         // Make sure the specified topology has elements of type Element
         auto topology = context->get<BaseObject>(topology_path);
-        auto caribou_topology = dynamic_cast<SofaCaribou::topology::CaribouTopology<Element> *>(topology);
+        auto caribou_topology = dynamic_cast<CaribouTopology *>(topology);
         auto sofa_topology = dynamic_cast<sofa::core::topology::BaseMeshTopology *>(topology);
-        if (not caribou_topology and (not sofa_topology or not mesh_is_compatible(sofa_topology))) {
+        if (not caribou_topology and (not sofa_topology or not CaribouTopology::mesh_is_compatible(sofa_topology))) {
             arg->logError("Cannot deduce the element type from the specified mesh topology '" + topology_path + "'.");
             return false;
         }
@@ -168,9 +166,9 @@ auto CaribouForcefield<Element>::canCreate(Derived *o,
         BaseObject * topology = nullptr;
         auto objects = context->getObjects<BaseObject>(BaseContext::SearchDirection::Local);
         for (auto * object : objects) {
-            auto caribou_topology = dynamic_cast<const SofaCaribou::topology::CaribouTopology<Element> *>(object);
+            auto caribou_topology = dynamic_cast<const CaribouTopology *>(object);
             auto sofa_topology = dynamic_cast<const sofa::core::topology::BaseMeshTopology *>(object);
-            if (caribou_topology  or (sofa_topology and mesh_is_compatible(sofa_topology))) {
+            if (caribou_topology  or (sofa_topology and CaribouTopology::mesh_is_compatible(sofa_topology))) {
                 topology = object;
                 break;
             }
