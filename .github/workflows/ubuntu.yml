@@ -16,10 +16,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        sofa_version: [ master ]
+        sofa_version: [ v20.06.01, v20.12.03, v21.06.00, master ]
     env:
       SOFA_VERSION: ${{ matrix.sofa_version }}
       SOFA_ROOT: /opt/sofa
+      SOFA_OS: Linux
 
     steps:
       - uses: actions/checkout@v2
@@ -35,7 +36,7 @@ jobs:
       - name: Download SOFA Release
         run:  |
           if [ "$SOFA_VERSION" = "master" ]; then
-              curl --output sofa.zip -L "https://ci.inria.fr/sofa-ci-dev/job/nightly-generate-binaries/lastStableBuild/CI_BRANCH=master,CI_SCOPE=standard/artifact/Linux/*zip*/Linux.zip"
+              https://ci.inria.fr/sofa-ci-dev/job/nightly-generate-binaries/CI_BRANCH=${{ matrix.sofa_branch }},CI_SCOPE=minimal/lastSuccessfulBuild/artifact/${SOFA_OS}/*zip*/${SOFA_OS}.zip
               unzip sofa.zip -d temp
               mv temp/Linux/`ls temp/Linux` sofa.zip 
               rm -rf temp
