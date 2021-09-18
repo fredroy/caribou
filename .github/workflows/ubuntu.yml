@@ -36,7 +36,7 @@ jobs:
       - name: Download SOFA Release
         run:  |
           if [ "$SOFA_VERSION" = "master" ]; then
-              https://ci.inria.fr/sofa-ci-dev/job/nightly-generate-binaries/CI_BRANCH=${{ matrix.sofa_branch }},CI_SCOPE=minimal/lastSuccessfulBuild/artifact/${SOFA_OS}/*zip*/${SOFA_OS}.zip
+              curl --output sofa.zip -L https://ci.inria.fr/sofa-ci-dev/job/nightly-generate-binaries/CI_BRANCH=${{ matrix.sofa_branch }},CI_SCOPE=minimal/lastSuccessfulBuild/artifact/${SOFA_OS}/*zip*/${SOFA_OS}.zip
               unzip sofa.zip -d temp
               mv temp/Linux/`ls temp/Linux` sofa.zip 
               rm -rf temp
