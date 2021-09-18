@@ -81,7 +81,7 @@ jobs:
           export CCACHE_DIR=$GITHUB_WORKSPACE/.ccache &&
           ccache -z &&
           cmake
-          -DPYTHON_EXECUTABLE=/usr/bin/python3.7
+          -DPYTHON_EXECUTABLE=/usr/bin/python3.8
           -DCMAKE_C_COMPILER_LAUNCHER=ccache
           -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
           -DCARIBOU_BUILD_TESTS=ON
