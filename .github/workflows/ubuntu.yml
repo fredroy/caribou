@@ -10,16 +10,17 @@ on:
 
 jobs:
   build:
-    name: Building with ${{ matrix.sofa_version }}
+    name: Building with ${{ matrix.sofa_branch }}
     runs-on: ubuntu-20.04
-    container: jnbrunet/caribou-ubuntu-1804-builder:latest
+    container: mizoumizou/caribou-ubuntu-2004-builder:latest
     strategy:
       fail-fast: false
       matrix:
-        sofa_version: [ v20.06.01, v20.12.03, v21.06.00, master ]
+        sofa_branch: [ v20.06, v20.12, v21.06, master ]
     env:
-      SOFA_VERSION: ${{ matrix.sofa_version }}
+      SOFA_VERSION: ${{ matrix.sofa_branch }}
       SOFA_ROOT: /opt/sofa
+      SOFA_OS: Linux
 
     steps:
       - uses: actions/checkout@v2
@@ -35,7 +36,7 @@ jobs:
       - name: Download SOFA Release
         run:  |
           if [ "$SOFA_VERSION" = "master" ]; then
-              curl --output sofa.zip -L "https://ci.inria.fr/sofa-ci-dev/job/nightly-generate-binaries/lastStableBuild/CI_BRANCH=master,CI_SCOPE=standard/artifact/Linux/*zip*/Linux.zip"
+              curl --output sofa.zip -L https://ci.inria.fr/sofa-ci-dev/job/nightly-generate-binaries/CI_BRANCH=${{ matrix.sofa_branch }},CI_SCOPE=minimal/lastSuccessfulBuild/artifact/${SOFA_OS}/*zip*/${SOFA_OS}.zip
               unzip sofa.zip -d temp
               mv temp/Linux/`ls temp/Linux` sofa.zip 
               rm -rf temp
@@ -48,7 +49,7 @@ jobs:
           fi
 
       - name: pybind11
-        if: ${{ matrix.sofa_version == 'v21.06.00' }}
+        if: ${{ matrix.sofa_version == 'v21.06' }}
         run: |
           git clone --depth 1 -b v2.6  https://github.com/pybind/pybind11.git /tmp/pybind11
           cmake -S/tmp/pybind11 -B/tmp/pybind11/build -DPYBIND11_TEST=OFF -DCMAKE_BUILD_TYPE=Release
@@ -80,7 +81,7 @@ jobs:
           export CCACHE_DIR=$GITHUB_WORKSPACE/.ccache &&
           ccache -z &&
           cmake
-          -DPYTHON_EXECUTABLE=/usr/bin/python3.7
+          -DPYTHON_EXECUTABLE=/usr/bin/python3.8
           -DCMAKE_C_COMPILER_LAUNCHER=ccache
           -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
           -DCARIBOU_BUILD_TESTS=ON
@@ -95,20 +96,20 @@ jobs:
       - name: Archive production
         uses: actions/upload-artifact@v2
         with:
-          name: caribou_${{ matrix.sofa_version }}
+          name: caribou_${{ matrix.sofa_branch }}
           path: SofaCaribou.tar.gz
 
   test:
-    name: Testing with ${{ matrix.sofa_version }}
+    name: Testing with ${{ matrix.sofa_branch }}
     needs: [build]
     runs-on: ubuntu-20.04
     container: ubuntu:20.04
     strategy:
       fail-fast: false
       matrix:
-        sofa_version: [ v20.06.01, v20.12.03, v21.06.00, master ]
+        sofa_branch: [ v20.06, v20.12, v21.06, master ]
     env:
-      SOFA_VERSION: ${{ matrix.sofa_version }}
+      SOFA_VERSION: ${{ matrix.sofa_branch }}
       SOFA_ROOT: /opt/sofa
       CARIBOU_ROOT: /opt/sofa/plugins/SofaCaribou
 
@@ -143,7 +144,7 @@ jobs:
       - name: Download caribou
         uses: actions/download-artifact@v2
         with:
-          name: caribou_${{ matrix.sofa_version }}
+          name: caribou_${{ matrix.sofa_branch }}
           path: /tmp
 
       - name: Unpack caribou
@@ -165,7 +166,7 @@ jobs:
       - name: Caribou.unittests.Topology
         if: ${{ always() }}
         run: |
-          [ "$SOFA_VERSION" = "v20.06.01" ] && export LD_LIBRARY_PATH="$SOFA_ROOT/lib:$LD_LIBRARY_PATH"
+          [ "$SOFA_VERSION" = "v20.06" ] && export LD_LIBRARY_PATH="$SOFA_ROOT/lib:$LD_LIBRARY_PATH"
           $CARIBOU_ROOT/bin/Caribou.unittests.Topology
 
       - name: Caribou.Topology.PyTest
@@ -183,11 +184,11 @@ jobs:
       - name: Caribou.unittests.SofaCaribou
         if: ${{ always() }}
         run: |
-            [ "$SOFA_VERSION" = "v20.06.01" ] && export LD_LIBRARY_PATH="$SOFA_ROOT/lib:$LD_LIBRARY_PATH"
+            [ "$SOFA_VERSION" = "v20.06" ] && export LD_LIBRARY_PATH="$SOFA_ROOT/lib:$LD_LIBRARY_PATH"
             $CARIBOU_ROOT/bin/Caribou.unittests.SofaCaribou
 
       - name: SofaCaribou.PyTest
-        if: ${{ matrix.sofa_version == 'v20.12.03' || matrix.sofa_version == 'v21.06.00' }}
+        if: ${{ matrix.sofa_branch == 'v20.12' || matrix.sofa_branch == 'v21.06' }}
         run: |
             export PYTHONPATH=$PYTHONPATH:$CARIBOU_ROOT/lib/python3/site-packages:$SOFA_ROOT/plugins/SofaPython3/lib/python3/site-packages
             python3 $CARIBOU_ROOT/bin/pytest/SofaCaribou_Forcefield_HyperelasticForcefield.py
